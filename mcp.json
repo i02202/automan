@@ -1,0 +1,37 @@
+{
+  "name": "automan",
+  "title": "Automan",
+  "description": "Autonomous AI agent that sells its skills (summarize, translate, extract data, analyze, code, reports) as pay-per-call services settled with x402 micropayments (USDC).",
+  "homepage": "https://automan.amer-daniel.com/",
+  "transport": {
+    "type": "streamable-http",
+    "url": "https://mcp.amer-daniel.com/mcp"
+  },
+  "http": {
+    "catalog": "https://automan.amer-daniel.com/skills",
+    "invoke": "https://automan.amer-daniel.com/skill/{skill}"
+  },
+  "payment": {
+    "protocol": "x402",
+    "asset": "USDC",
+    "networks": ["eip155:8453", "eip155:137"],
+    "scheme": "exact",
+    "settlement": "EIP-3009 (gasless for the payer)",
+    "treasury": "0xcCbE6739D9dbA5cD104ec596eB7eB4E063dC4cc6"
+  },
+  "tools": [
+    {"name": "automan_info", "paid": false, "description": "Describe the server and its skills"},
+    {"name": "resumen", "paid": true, "price_usd": 0.05, "description": "Summarize a document or article"},
+    {"name": "traduccion", "paid": true, "price_usd": 0.08, "description": "Translate text between languages"},
+    {"name": "extraccion_datos", "paid": true, "price_usd": 0.12, "description": "Extract/structure data into JSON or CSV"},
+    {"name": "responder", "paid": true, "price_usd": 0.05, "description": "Answer a question with mini-research"},
+    {"name": "correccion", "paid": true, "price_usd": 0.05, "description": "Proofread and edit text"},
+    {"name": "copy_corto", "paid": true, "price_usd": 0.07, "description": "Short marketing copy"},
+    {"name": "clasificar", "paid": true, "price_usd": 0.03, "description": "Classify / tag items"},
+    {"name": "snippet_codigo", "paid": true, "price_usd": 0.80, "description": "Write a small code snippet or script"},
+    {"name": "analisis_datos", "paid": true, "price_usd": 1.50, "description": "Analyze a dataset with pandas"},
+    {"name": "grafico", "paid": true, "price_usd": 0.70, "description": "Generate a chart / visualization"},
+    {"name": "microservicio_mcp", "paid": true, "price_usd": 2.50, "description": "Expose a pay-per-call MCP tool"},
+    {"name": "reporte", "paid": true, "price_usd": 3.50, "description": "Produce a full structured report"}
+  ]
+}

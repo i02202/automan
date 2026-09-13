@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "automan": {
+      "type": "streamable-http",
+      "url": "https://mcp.amer-daniel.com/mcp"
+    }
+  }
+}
