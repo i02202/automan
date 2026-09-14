@@ -1,0 +1,123 @@
+name: List Automan on an awesome list
+
+# Compuerta de aprobación remota de Automan — PARA CUALQUIER LISTA.
+# La disparas TÚ con "Run workflow" (web o app de GitHub, desde donde estés).
+# Corre en GitHub Actions (no en tu Mac ni en tu panel), con un token de BOT
+# scoped guardado como secret LIST_BOT_TOKEN. Agrega la entrada de Automan al
+# README de la lista destino. Listas verificadas usan su formato exacto; otras
+# usan un formato seguro por defecto, y si no puede colocarse con seguridad,
+# NO publica nada (evita PRs mal formados).
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Lista destino: owner/repo (cualquiera de GitHub)"
+        required: true
+        default: "wong2/awesome-mcp-servers"
+      confirm:
+        description: 'Escribe "si" para confirmar que quieres abrir el PR'
+        required: true
+        default: "no"
+
+permissions:
+  contents: read
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar confirmación
+        if: ${{ inputs.confirm != 'si' }}
+        run: |
+          echo "No confirmado (confirm != 'si'). Cancelado."; exit 1
+
+      - name: Abrir PR de listado
+        env:
+          GH_TOKEN: ${{ secrets.LIST_BOT_TOKEN }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -e
+          if [ -z "$GH_TOKEN" ]; then echo "Falta el secret LIST_BOT_TOKEN"; exit 1; fi
+          case "$TARGET" in */*) : ;; *) echo "target debe ser owner/repo"; exit 1 ;; esac
+
+          gh repo fork "$TARGET" --clone=true
+          cd "$(basename "$TARGET")"
+          git checkout -b add-automan || git checkout add-automan
+
+          TARGET="$TARGET" python3 - <<'PY'
+          import os, re, sys
+          repo = os.environ["TARGET"]
+          REPOURL = "https://github.com/i02202/automan"
+          STORE = "https://automan.amer-daniel.com/"
+          DESC = ("Autonomous agent that sells AI micro-tasks (summarize, translate, extract data, "
+                  "analyze, code, reports) over MCP, paid per call via x402 (USDC on Base/Polygon), "
+                  "gasless for the caller.")
+
+          # Plantillas VERIFICADAS a mano (categoria, estilo, enlace). Ampliar aquí.
+          TEMPLATES = {
+              "wong2/awesome-mcp-servers": {"cat": "Community Servers", "style": "bold", "link": "repo"},
+              "punkpeye/awesome-mcp-servers": {"cat": "Other Tools and Integrations", "style": "cloud", "link": "store",
+                                               "avoid": "Requiere Glama+Docker; suele rechazar servicios remotos/cerrados."},
+          }
+          # Para listas NO verificadas: intentar estas categorias en orden.
+          GENERIC_CATS = ["Other Tools and Integrations", "Community Servers", "Community",
+                          "Servers", "Other", "Tools", "Miscellaneous", "Uncategorized"]
+
+          def build_entry(style, link):
+              url = REPOURL if link == "repo" else (STORE if link == "store" else REPOURL)
+              if style == "bold":
+                  return f"- **[Automan]({url})** - {DESC}"
+              if style == "cloud":
+                  return f"- [Automan]({STORE}) ☁️ - {DESC}"
+              return f"- [Automan]({url}) - {DESC}"
+
+          f = "README.md"; s = open(f, encoding="utf-8").read()
+          if "i02202/automan" in s or STORE in s:
+              print("YA_LISTADO"); sys.exit(0)
+          lines = s.split("\n")
+
+          def find_cat(marker):
+              m = marker.lower()
+              return next((i for i, l in enumerate(lines)
+                           if re.match(r'^#{2,4}\s', l) and m in l.lower()), None)
+
+          tpl = TEMPLATES.get(repo)
+          if tpl:
+              cat_i = find_cat(tpl["cat"])
+              entry = build_entry(tpl["style"], tpl["link"])
+              if cat_i is None:
+                  print("ERROR: categoria verificada '%s' no encontrada (la lista cambió)" % tpl["cat"]); sys.exit(2)
+          else:
+              cat_i, entry = None, build_entry("plain", "repo")
+              for c in GENERIC_CATS:
+                  cat_i = find_cat(c)
+                  if cat_i is not None:
+                      break
+              if cat_i is None:
+                  print("ERROR: no encontré una categoría segura donde insertar en %s. "
+                        "Necesita plantilla verificada (pídesela a Claude). No se publica nada." % repo); sys.exit(3)
+
+          end = next((j for j in range(cat_i + 1, len(lines)) if re.match(r'^#{2,4}\s', lines[j])), len(lines))
+          def name(x):
+              try: return x.split("[", 1)[1].split("]", 1)[0].strip().lower()
+              except Exception: return x.strip().lower()
+          items = [j for j in range(cat_i + 1, end) if lines[j].lstrip().startswith("- ") and "[" in lines[j]]
+          new = name(entry)
+          pos = next((j for j in items if name(lines[j]) > new), (items[-1] + 1 if items else cat_i + 1))
+          lines.insert(pos, entry)
+          open(f, "w", encoding="utf-8").write("\n".join(lines))
+          print("INSERTADO en", pos, "| verificada" if tpl else "| generico")
+          PY
+
+          if ! grep -q "i02202/automan\|automan.amer-daniel.com" README.md; then
+            echo "no se insertó (ver mensaje arriba); no se publica"; exit 1
+          fi
+          git config user.name "automan-lister"
+          git config user.email "noreply@users.noreply.github.com"
+          git add README.md
+          git commit -m "Add Automan (x402-paid MCP agent)"
+          git push -u origin add-automan
+          gh pr create --repo "$TARGET" \
+            --title "Add Automan (x402-paid MCP agent)" \
+            --body "Adds **Automan**, an autonomous MCP server (streamable-http) that charges per call via x402 (USDC on Base/Polygon; gasless EIP-3009). Repo: https://github.com/i02202/automan · MCP: https://mcp.amer-daniel.com/mcp · Docs: https://automan.amer-daniel.com/ . Disclosure: author submission; entry placed alphabetically — happy to adjust category/format to match your guidelines."
