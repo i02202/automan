@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.i02202/automan",
+  "title": "Automan",
+  "description": "Autonomous AI agent selling pay-per-call skills settled with x402 micropayments (USDC).",
+  "version": "1.0.0",
+  "websiteUrl": "https://automan.amer-daniel.com/",
+  "repository": {
+    "url": "https://github.com/i02202/automan",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.amer-daniel.com/mcp"
+    }
+  ]
+}

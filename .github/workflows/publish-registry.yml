@@ -1,0 +1,67 @@
+name: Publish Automan to official MCP registry
+
+# Publica el listado de Automan en el registro oficial de MCP
+# (registry.modelcontextprotocol.io), namespace io.github.i02202/automan.
+#
+# Autenticacion: GitHub OIDC. NO usa secrets ni tokens.
+# El propio workflow demuestra, con su token OIDC, que corre en un repo
+# de i02202, y por eso puede publicar bajo io.github.i02202/*.
+#
+# Se dispara a mano (Run workflow). Para que publique de verdad hay que
+# elegir confirm = si. Con confirm = no solo hace un ensayo y no publica.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Publicar de verdad en el registro? (elige si para publicar)"
+        type: choice
+        required: true
+        default: "no"
+        options:
+          - "no"
+          - "si"
+
+permissions:
+  id-token: write   # necesario para OIDC
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mostrar server.json
+        run: |
+          echo "== server.json que se publicara =="
+          cat server.json
+
+      - name: Instalar mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          chmod +x mcp-publisher
+          ./mcp-publisher --version || true
+
+      - name: Ensayo (confirm = no)
+        if: ${{ github.event.inputs.confirm != 'si' }}
+        run: |
+          echo "confirm = '${{ github.event.inputs.confirm }}'. Es un ensayo: NO se publica."
+          echo "Para publicar de verdad, corre el workflow otra vez y elige confirm = si."
+
+      - name: Login (OIDC) y publicar
+        if: ${{ github.event.inputs.confirm == 'si' }}
+        run: |
+          echo "Autenticando con GitHub OIDC (sin secrets)..."
+          ./mcp-publisher login github-oidc
+          echo "Publicando en el registro oficial..."
+          ./mcp-publisher publish
+
+      - name: Verificar en el registro
+        if: ${{ github.event.inputs.confirm == 'si' }}
+        run: |
+          echo "Esperando propagacion..."
+          sleep 5
+          echo "== Resultado en el registro =="
+          curl -s "https://registry.modelcontextprotocol.io/v0/servers?search=io.github.i02202/automan" || true
