@@ -41,8 +41,14 @@ jobs:
           if [ -z "$GH_TOKEN" ]; then echo "Falta el secret LIST_BOT_TOKEN"; exit 1; fi
           case "$TARGET" in */*) : ;; *) echo "target debe ser owner/repo"; exit 1 ;; esac
 
-          gh repo fork "$TARGET" --clone=true
-          cd "$(basename "$TARGET")"
+          ME="$(gh api user -q .login)"
+          # Crea (o reutiliza) el fork y OBTÉN SU NOMBRE REAL (puede llevar sufijo -1
+          # si ya tienes otro repo con ese nombre). Evita el choque de nombres.
+          FORK="$(gh api -X POST "repos/$TARGET/forks" -q .full_name)"
+          echo "fork: $FORK"
+          for i in $(seq 1 20); do gh api "repos/$FORK" >/dev/null 2>&1 && break; sleep 3; done
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${FORK}.git" work
+          cd work
           git checkout -b add-automan || git checkout add-automan
 
           TARGET="$TARGET" python3 - <<'PY'
@@ -118,6 +124,6 @@ jobs:
           git add README.md
           git commit -m "Add Automan (x402-paid MCP agent)"
           git push -u origin add-automan
-          gh pr create --repo "$TARGET" \
+          gh pr create --repo "$TARGET" --head "${ME}:add-automan" \
             --title "Add Automan (x402-paid MCP agent)" \
             --body "Adds **Automan**, an autonomous MCP server (streamable-http) that charges per call via x402 (USDC on Base/Polygon; gasless EIP-3009). Repo: https://github.com/i02202/automan · MCP: https://mcp.amer-daniel.com/mcp · Docs: https://automan.amer-daniel.com/ . Disclosure: author submission; entry placed alphabetically — happy to adjust category/format to match your guidelines."
