@@ -49,7 +49,8 @@ jobs:
           for i in $(seq 1 20); do gh api "repos/$FORK" >/dev/null 2>&1 && break; sleep 3; done
           git clone "https://x-access-token:${GH_TOKEN}@github.com/${FORK}.git" work
           cd work
-          git checkout -b add-automan || git checkout add-automan
+          BRANCH="add-automan-${GITHUB_RUN_ID}"   # rama única por corrida (evita choques al re-correr)
+          git checkout -b "$BRANCH"
 
           TARGET="$TARGET" python3 - <<'PY'
           import os, re, sys
@@ -123,7 +124,7 @@ jobs:
           git config user.email "noreply@users.noreply.github.com"
           git add README.md
           git commit -m "Add Automan (x402-paid MCP agent)"
-          git push -u origin add-automan
-          gh pr create --repo "$TARGET" --head "${ME}:add-automan" \
+          git push -u origin "$BRANCH"
+          gh pr create --repo "$TARGET" --head "${ME}:${BRANCH}" \
             --title "Add Automan (x402-paid MCP agent)" \
             --body "Adds **Automan**, an autonomous MCP server (streamable-http) that charges per call via x402 (USDC on Base/Polygon; gasless EIP-3009). Repo: https://github.com/i02202/automan · MCP: https://mcp.amer-daniel.com/mcp · Docs: https://automan.amer-daniel.com/ . Disclosure: author submission; entry placed alphabetically — happy to adjust category/format to match your guidelines."
